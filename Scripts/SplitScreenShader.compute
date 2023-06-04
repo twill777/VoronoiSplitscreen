@@ -1,0 +1,114 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct Player
+{
+    int group;
+    float weight;
+    float2 midPos;
+    float2 position;
+    float4 color;
+};
+
+struct TexStruct
+{
+    Texture2D<float4> tex;
+};
+
+RWStructuredBuffer<Player> players;
+
+RWTexture2DArray<float4> Textures;
+
+RWTexture2D<float4> Result;
+RWTexture2D<float4> OverviewResult;
+Texture2D<float4> Overview;
+Texture2D<float4> Render0;
+Texture2D<float4> Render1;
+Texture2D<float4> Render2;
+
+float4 Colors;
+
+float2 Resolution;
+int NumPlayers;
+float var1;
+float CircleRad;
+
+float var2;
+
+#define PI 3.1415926538
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    Textures[uint3(id.x, id.y, 0)] = Render0[id.xy];
+    Textures[uint3(id.x, id.y, 1)] = Render1[id.xy];
+    Textures[uint3(id.x, id.y, 2)] = Render2[id.xy];
+    //Textures[uint3(id.x, id.y, 2)] = Render2[id.xy];
+
+    // TODO: insert actual code here!
+    float aspect =  (Resolution[0] / Resolution[1]);
+
+    float x = id.x / Resolution[0] * aspect;
+    float y = id.y / Resolution[1];
+
+    float smallestDist = Resolution[0];
+    int smallestIdx = 0;
+
+    Result[id.xy] = Render0[id.xy];
+    for (int i = 0; i < NumPlayers; i++)
+    {
+        float2 playerPos = {players[i].position.x,
+                                players[i].position.y};
+
+        float2 midPos = {players[i].midPos.x,
+                                players[i].midPos.y};
+
+        playerPos.x = 0.5 - (playerPos.x / 2.0);
+        playerPos.y = 0.5 - (playerPos.y / 2.0);
+
+        midPos.x = 0.5 - (midPos.x / 2.0);
+        midPos.y = 0.5 - (midPos.y / 2.0);
+
+        float2 diffPos = normalize(float2(x, y) - playerPos);
+
+        float dist = sqrt( pow( x - ( playerPos.x * aspect ), 2 ) + pow( y - playerPos.y, 2 ) );
+
+        smallestDist = (dist <  smallestDist) ? dist : smallestDist;
+        smallestIdx  = (dist == smallestDist) ? i    : smallestIdx;
+    }
+
+    Result[id.xy] = Textures[uint3(id.x, id.y, smallestIdx)];
+
+    // Draw player centers
+    for (i = 0; i < NumPlayers; i++)
+    {
+        float2 playerPos = {players[i].position.x,
+                                players[i].position.y};
+
+        playerPos.x = 0.5 - (playerPos.x / 2.0);
+        playerPos.y = 0.5 - (playerPos.y / 2.0);
+        
+        float dist = sqrt( pow( x - ( playerPos.x * aspect ), 2 ) + pow( y - playerPos.y, 2 ) );
+        float dist2 = sqrt( pow( x - ( playerPos.x * aspect * 4.0 ), 2 ) + pow( y - (playerPos.y * 4.0), 2 ) );
+
+        Result[id.xy] = dist > CircleRad ? Result[id.xy] : players[i].color;
+        OverviewResult[id.xy] = dist > CircleRad / 4.0 ? Overview[id.xy] : float4(1, 1, 1, 0);
+    }
+
+    // Draw player midpoints
+    for (i = 0; i < NumPlayers; i++)
+    {
+        float2 playerPos = {players[i].midPos.x,
+                                players[i].midPos.y};
+
+        playerPos.x = 0.5 - (playerPos.x / 2.0);
+        playerPos.y = 0.5 - (playerPos.y / 2.0);
+        
+        float dist = sqrt( pow( x - ( playerPos.x * aspect ), 2 ) + pow( y - playerPos.y, 2 ) );
+
+        Result[id.xy] = dist > CircleRad / 2.0 ? Result[id.xy] : (1.0 - players[i].color);
+    }
+
+    //Result[id.xy] = smallestDist > CircleRad ? Result[id.xy] : float4(1, 1, 1, 0);
+    Result[id.xy] = (Result[id.xy] * 0.5) + (players[players[smallestIdx].group].color * 0.5);
+}
