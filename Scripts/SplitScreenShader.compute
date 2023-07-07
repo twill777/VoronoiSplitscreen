@@ -20,7 +20,6 @@ RWStructuredBuffer<Player> players;
 RWTexture2DArray<float4> Textures;
 
 RWTexture2D<float4> Result;
-RWTexture2D<float4> OverviewResult;
 Texture2D<float4> Overview;
 Texture2D<float4> Render0;
 Texture2D<float4> Render1;
@@ -92,7 +91,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         float dist2 = sqrt( pow( x - ( playerPos.x * aspect * 4.0 ), 2 ) + pow( y - (playerPos.y * 4.0), 2 ) );
 
         Result[id.xy] = dist > CircleRad ? Result[id.xy] : players[i].color;
-        OverviewResult[id.xy] = dist > CircleRad / 4.0 ? Overview[id.xy] : float4(1, 1, 1, 0);
     }
 
     // Draw player midpoints
@@ -109,6 +107,5 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         Result[id.xy] = dist > CircleRad / 2.0 ? Result[id.xy] : (1.0 - players[i].color);
     }
 
-    //Result[id.xy] = smallestDist > CircleRad ? Result[id.xy] : float4(1, 1, 1, 0);
-    Result[id.xy] = (Result[id.xy] * 0.5) + (players[players[smallestIdx].group].color * 0.5);
+    Result[id.xy] = (Result[id.xy] * 0.6) + (players[players[smallestIdx].group].color * 0.4);
 }

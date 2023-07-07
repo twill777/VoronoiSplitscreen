@@ -32,6 +32,11 @@ public class PlayerController : MonoBehaviour
         playerCam.transform.position = transform.position + offset - new Vector3(0f, 0f, 10f);
     }
 
+    public void ChangePlayer (int newPlayer)
+    {
+        currentPlayer = newPlayer;
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -54,21 +59,6 @@ public class PlayerController : MonoBehaviour
 
             Vector3 move = new Vector3(h, Input.GetAxis("Vertical"), 0);
             transform.position += move * speed * Time.deltaTime;
-        }
-
-        if (Input.GetKeyDown("1"))
-        {
-            currentPlayer = 0;
-        }
-
-        if (Input.GetKeyDown("2"))
-        {
-            currentPlayer = 1;
-        }
-
-        if (Input.GetKeyDown("3"))
-        {
-            currentPlayer = 2;
         }
     }
 }

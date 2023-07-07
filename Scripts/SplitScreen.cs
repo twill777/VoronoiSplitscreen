@@ -52,6 +52,9 @@ public class SplitScreen : MonoBehaviour
 
     float bound;
 
+    bool cameraStyle = true; // false = traditional
+    int currentPlayer = 0;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -113,7 +116,6 @@ public class SplitScreen : MonoBehaviour
 
         splitShader.SetFloats("Resolution", new float[2] {screenRender.width, screenRender.height});
         splitShader.SetFloat("CircleRad", circleRad);
-        splitShader.SetFloat("CurveFactor", var2);
         splitShader.SetFloat("MaxDist", var1);
         splitShader.SetInt("NumPlayers", numPlayers);
 
@@ -137,6 +139,26 @@ public class SplitScreen : MonoBehaviour
         Buffer();
         UpdateVars();
         transform.position = midpoint;
+
+        if (Input.GetKeyDown("c"))
+        {
+            cameraStyle = !cameraStyle;
+            Debug.Log(cameraStyle);
+        }
+
+        if (Input.GetKeyDown("1") || Input.GetKeyDown("2") || Input.GetKeyDown("3"))
+        {
+            if (Input.GetKeyDown("1")) { currentPlayer = 0; }
+
+            if (Input.GetKeyDown("2")) { currentPlayer = 1; }
+
+            if (Input.GetKeyDown("3")) { currentPlayer = 2; }
+
+            for (int i = 0; i < numPlayers; i++)
+            {
+                PlayerTransforms[i].GetComponent<PlayerController>().ChangePlayer(currentPlayer);
+            }
+        }
     }
 
     void UpdateVars()
@@ -153,7 +175,6 @@ public class SplitScreen : MonoBehaviour
         midpoint =  new Vector3(x / numPlayers, y / numPlayers, z / numPlayers);
         bound = mainCam.orthographicSize * var1;
 
-        splitShader.SetFloat("CurveFactor", var2);
         splitShader.SetFloats("Resolution", new float[2] {resultRender.width, resultRender.height});
         splitShader.SetFloat("CircleRad", circleRad);
         splitShader.SetFloat("MaxDist", var1);
@@ -187,71 +208,180 @@ public class SplitScreen : MonoBehaviour
         return output;
     }
 
+
+    Vector2 ProcessDiff(Vector2 diff)
+    {
+        float xyDiff = Mathf.Abs(diff.x) - Mathf.Abs(diff.y); // >0 means x is greater
+
+        float yDiff = Mathf.Clamp(xyDiff, 0, bound) / bound; // 0 when y > x, 1 when x >> y
+        float xDiff = Mathf.Clamp(-xyDiff, 0, bound) / bound; // 0 when x > y, 1 when y >> x
+
+        float lerp = diff.magnitude - bound;
+        lerp = Mathf.Clamp(lerp, 0, bound) / bound; // 0 when diff.magnitude < bound, 1 when diff.magnitude > bound * 2
+
+        diff.x = Mathf.Clamp(diff.x, -bound, bound);
+        diff.y = Mathf.Clamp(diff.y, -bound, bound);
+
+        diff.x -= diff.x * xDiff * lerp;
+        diff.y -= diff.y * yDiff * lerp;
+
+        return diff;
+    }
+
+
     Vector2 GetPlayerCamOff(Player[] points, int myIdx)
     {
         Vector2 offset = new Vector2();
-
         for(int i = 0; i < points.Length; i++)
         {
             Vector2 diff = (points[i].position - points[myIdx].position);
-
             diff.x /= aspect;
 
             diff.Normalize();
             diff *= bound;
 
             diff.x  *= aspect;
-
             offset += diff;
         }
 
-        offset = (offset / numPlayers);
-
-        Vector2 midDiff = (TrimVec3(midpoint) - points[myIdx].position);
-
-        //float lerp = Mathf.Max(0f, 1f - Mathf.Max(0f,((var3 * worldDiff.magnitude) - screenDiff.magnitude) / screenDiff.magnitude))
-
-        if (midDiff.magnitude < offset.magnitude)
-        {
-            offset = midDiff;
-            Debug.Log(midDiff);
-        }
-
+        offset /= numPlayers;
         return offset;
     }
 
-    Vector2 GetPlayerOffset(Player[] points, Player[] groups, int myIdx)
+
+    Vector2 GetPlayerCamOff2(Player[] points, int myIdx)
     {
-        Vector2 worldCoord = players[myIdx].position;
-        Vector2 screenCoord = players[myIdx].midPos;
-
         Vector2 offset = new Vector2();
-
-        float count = 0f;
-
-        for (int i = 0; i < numPlayers; i++)
+        for(int i = 0; i < points.Length; i++)
         {
-            if (i == myIdx) { continue; }
+            Vector2 diff = (points[i].position - points[myIdx].position);
+            diff.x /= aspect;
 
-            Vector2 worldOther = players[i].position;
-            Vector2 screenOther = players[i].midPos;
-
-            Vector2 worldDiff = worldOther - worldCoord;
-            Vector2 screenDiff = screenOther - screenCoord;
-
-
-            if (worldDiff.magnitude < screenDiff.magnitude)
+            if (diff.magnitude < bound)
             {
-                offset += (worldDiff + screenDiff);
+                diff.Normalize();
+                diff *= bound;
+            }
+
+            diff.x = Mathf.Clamp(diff.x, -bound, bound);
+            diff.y = Mathf.Clamp(diff.y, -bound, bound);
+
+            diff.x  *= aspect;
+            offset += diff;
+        }
+
+        offset /= numPlayers;
+        return offset;
+    }
+
+
+    Vector2 GetPlayerOffset(Player[] points, int myIdx)
+    {
+        Vector2 offset = new Vector2();
+        for(int i = 0; i < points.Length; i++)
+        {
+            Vector2 diff = (points[i].position - points[myIdx].position);
+            diff.x /= aspect;
+
+            if (diff.magnitude > bound)
+            {
+                diff.Normalize();
+                diff *= bound;
+            }
+
+            diff.x  *= aspect;
+            offset += diff;
+        }
+
+        offset /= numPlayers;
+        return offset;
+    }
+
+   /*Vector2 GetPlayerOffset2(Player[] points, int myIdx)
+    {
+        Vector2 offset = new Vector2();
+        for (int i = 0; i < points.Length; i++)
+        {
+            Vector2 diff = (points[i].position - points[myIdx].position);
+            Vector2 screenDiff = -(points[i].midPos - points[myIdx].midPos);
+
+            diff.x /= aspect;
+            screenDiff.x /= aspect;
+
+            diff.x = Mathf.Clamp(diff.x, -Mathf.Abs(screenDiff.x), Mathf.Abs(screenDiff.x));
+            diff.y = Mathf.Clamp(diff.y, -Mathf.Abs(screenDiff.y), Mathf.Abs(screenDiff.y));
+
+            if (Mathf.Abs(diff.y) <= Mathf.Abs(screenDiff.y) && Mathf.Abs(diff.x) <= Mathf.Abs(screenDiff.x))
+            {
+                diff.y -= ((screenDiff.y - diff.y) / 2f) * var2;
+                diff.x -= ((screenDiff.x - diff.x) / 2f) * var3;
+            }
+
+            diff.x *= aspect;
+            offset += diff;
+        }
+
+        offset /= numPlayers;
+        return offset;
+    } */
+
+    float EaseInCirc(float x) {
+        return 1 - Mathf.Sqrt(1 - Mathf.Pow(x, 2));
+    }
+
+    float EaseInExpo(float x) {
+        return x == 0 ? 0 : Mathf.Pow(2, 10 * x - 10);
+    }
+
+    Vector2 GetPlayerOffset2(Player[] points, int myIdx)
+    {
+        Vector2 offset = Vector2.zero;
+        float count = 0;
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            Vector2 diff = (points[i].position - points[myIdx].position);
+            Vector2 screenDiff = -(points[i].midPos - points[myIdx].midPos);
+
+            diff.x /= aspect;
+            screenDiff.x /= aspect;
+
+            Vector2 currentOffset = count == 0 ? offset : offset / count;
+
+
+            // When players are vertically stacked 1-2-3, and 2,3 are close together, as 1 (the top player) approaches it detects and is offset by 3 (the bottom player) before 2 (the middle player)
+            /*if (myIdx == 0 && i == 2)
+            {
+                Debug.Log(Mathf.Abs(diff.y) <= Mathf.Min(bound, Mathf.Abs(screenDiff.y)));
+            }*/
+            
+            if ((Mathf.Abs(diff.x) <= Mathf.Min(bound, Mathf.Abs(screenDiff.x))) && (Mathf.Abs(diff.y) <= Mathf.Min(bound, Mathf.Abs(screenDiff.y))))
+            {
+                if (Mathf.Abs(diff.x) <= Mathf.Abs(screenDiff.x))
+                {
+                    diff.x *= aspect;
+                    screenDiff.x *= aspect;
+                    
+                    offset.x -= (screenDiff.x - diff.x);
+                }   
+
+                if (Mathf.Abs(diff.y) <= Mathf.Abs(screenDiff.y))
+                {
+                    
+                    offset.y -= (screenDiff.y - diff.y);
+                }
+
                 count += 1f;
             }
-        }
-        
-        if (count > 0f) 
-        {
-            offset /= count + 1f;
+
+            /*if (myIdx == 0 && i == 2)
+            {
+                Debug.Log(offset);
+            }*/
         }
 
+        offset /= count;
+        offset += points[myIdx].midPos;
         return offset;
     }
     
@@ -273,40 +403,35 @@ public class SplitScreen : MonoBehaviour
 
         for (int i = 0; i < numPlayers; i++)
         {
-            groups[i].position = GetPlayerCamOff(players, i);
+            if(!cameraStyle)
+            {
+                groups[i].position = GetPlayerCamOff(players, i);
+            } else {
+                groups[i].position = GetPlayerCamOff2(players, i);
+            }
             players[i].midPos = groups[i].position;
         }
 
         for (int i = 0; i < numPlayers; i++)
         {
-            groups[i].midPos = GetPlayerOffset(players, groups, i);
+            if(!cameraStyle)
+            {
+                groups[i].midPos = GetPlayerOffset(players, i);
+            } else {
+                groups[i].midPos = GetPlayerOffset2(players, i);
+            }
         }
 
         for (int i = 0; i < numPlayers; i++)
         {
-            // players[i].position        : player's world position
-            //      Renders player dot at this vector from screen center
-
-            // players[i].midPos          : player's world position, shifted to account for other close players
-            //      Renders midpoint dot at this vector from screen center
-
-            // groups[i].midPos           : average direction of all player directions relative to this player, times 'bound'
-            //                            ^ NOTE - This is the "spread out" worldspace position the player's camera 
-            //                                     from the center of the screen 
-            //                                     (ex. 2 other players to left means camera is 2/3 * screen_width left of player)
-            
-            // Vec2 GetScreenPos(Vec2)    : Converts a Vec2 to screenspace coordinates
-            // Vec3 GetPlayerCamPos(Vec2) : Converts a Vec2 to worldspace coordinates
-            // Void MoveCamera(Vec3)      : Moves the camera to the player's worldspace position + Vec3 (in worldspace)
-
             // Shift the player's camera from midPos by camPos
-            PlayerTransforms[i].GetComponent<PlayerController>().MoveCamera(groups[i].position + groups[i].midPos);
+            PlayerTransforms[i].GetComponent<PlayerController>().MoveCamera(groups[i].midPos);
 
             // Screenspace vector from player's position->camPos
             players[i].position = GetScreenPos(groups[i].position);
 
             // Screenspace vector from player's midPos->camPos
-            players[i].midPos = GetScreenPos(groups[i].position + groups[i].midPos);
+            players[i].midPos = GetScreenPos(groups[i].midPos);
         }
 
         splitShader.SetInt("NumPlayers", numPlayers);

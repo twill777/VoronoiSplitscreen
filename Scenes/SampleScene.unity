@@ -477,7 +477,7 @@ MonoBehaviour:
   circleRad: 0.025
   var1: 1
   var2: 1
-  var3: 1
+  var3: 0
   colors:
   - {r: 0.73805285, g: 1, b: 0.4009434, a: 0.14901961}
   - {r: 0.7254902, g: 0.29803923, b: 0.4828567, a: 0.14901961}
@@ -573,11 +573,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -15
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -3
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.z
@@ -654,11 +654,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 985880204932085088, guid: bf47da3e54ee4f949a3ce784dbc91b08, type: 3}
       propertyPath: m_LocalPosition.z
